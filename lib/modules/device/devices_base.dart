@@ -15,10 +15,10 @@ import 'package:thingsboard_pe_client/thingsboard_client.dart';
 
 mixin DevicesBase on EntitiesBase<EntityData, EntityDataQuery> {
   @override
-  String get title => 'Devices';
+  String get title => 'Устройства';
 
   @override
-  String get noItemsFoundText => 'No devices found';
+  String get noItemsFoundText => 'Устройства не найдены';
 
   @override
   Future<PageData<EntityData>> fetchEntities(EntityDataQuery dataQuery) {

@@ -9,8 +9,8 @@ class AssetDetailsPage extends EntityDetailsPage<Asset> {
   AssetDetailsPage(TbContext tbContext, String assetId)
       : super(tbContext,
             entityId: assetId,
-            defaultTitle: 'Asset',
-            subTitle: 'Asset details');
+            defaultTitle: 'Объект',
+            subTitle: 'Инфо об объекте');
 
   @override
   Future<Asset?> fetchEntity(String assetId) {

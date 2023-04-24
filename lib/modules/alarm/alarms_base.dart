@@ -33,10 +33,11 @@ const Map<AlarmStatus, String> alarmStatusTranslations = {
 
 mixin AlarmsBase on EntitiesBase<AlarmInfo, AlarmQuery> {
   @override
-  String get title => 'Alarms';
+  String get title => 'События';
+  //String get title => '${S.of(context).alarms}';
 
   @override
-  String get noItemsFoundText => 'No alarms found';
+  String get noItemsFoundText => 'События не найдены';
 
   @override
   Future<PageData<AlarmInfo>> fetchEntities(AlarmQuery query) {
