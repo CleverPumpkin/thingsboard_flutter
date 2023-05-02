@@ -10,10 +10,10 @@ import 'package:thingsboard_app/utils/utils.dart';
 
 mixin DashboardsBase on EntitiesBase<DashboardInfo, PageLink> {
   @override
-  String get title => 'Dashboards';
+  String get title => 'Панели';
 
   @override
-  String get noItemsFoundText => 'No dashboards found';
+  String get noItemsFoundText => 'Панели не найдены';
 
   @override
   Future<PageData<DashboardInfo>> fetchEntities(PageLink pageLink) {
