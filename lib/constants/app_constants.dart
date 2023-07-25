@@ -1,5 +1,5 @@
 abstract class ThingsboardAppConstants {
-  static final thingsBoardApiEndpoint = 'http://lk.detectorsiren.ru:8080';
+  static final thingsBoardApiEndpoint = 'https://lk.detectorsiren.ru';
   static final thingsboardOAuth2CallbackUrlScheme =
       'org.thingsboard.pe.app.auth';
 
