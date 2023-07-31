@@ -106,7 +106,7 @@ class _DashboardState extends TbContextState<Dashboard> {
         useShouldOverrideUrlLoading: true,
         mediaPlaybackRequiresUserGesture: false,
         javaScriptEnabled: true,
-        cacheEnabled: true,
+        cacheEnabled: false,
         supportZoom: false,
         // useOnDownloadStart: true
       ),
@@ -214,6 +214,9 @@ class _DashboardState extends TbContextState<Dashboard> {
     }
     var webMessage = WebMessage(data: jsonEncode(windowMessage));
     if (!UniversalPlatform.isWeb) {
+      if (!UniversalPlatform.isAndroid) {
+        await Future.delayed(const Duration(milliseconds: 1500));
+      }
       await controller!
           .postWebMessage(message: webMessage, targetOrigin: Uri.parse('*'));
     }
