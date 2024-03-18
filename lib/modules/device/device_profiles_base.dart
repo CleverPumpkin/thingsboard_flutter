@@ -292,13 +292,13 @@ class _DeviceProfileCardState extends TbContextState<DeviceProfileCard> {
     BoxFit imageFit;
     double padding;
     if (hasImage) {
-      image = Utils.imageFromBase64(entity.image!);
+      image = Utils.imageFromTbImage(context, tbClient, entity.image!);
       imageFit = BoxFit.contain;
       padding = 8;
     } else {
       image = SvgPicture.asset(ThingsboardImage.deviceProfilePlaceholder,
-          color: Theme.of(context).primaryColor,
-          colorBlendMode: BlendMode.overlay,
+          colorFilter: ColorFilter.mode(
+              Theme.of(context).primaryColor, BlendMode.overlay),
           semanticsLabel: 'Device profile');
       imageFit = BoxFit.cover;
       padding = 0;

@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:universal_platform/universal_platform.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:fluro/fluro.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
-import 'package:package_info/package_info.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:thingsboard_app/constants/app_constants.dart';
 import 'package:thingsboard_app/core/auth/oauth2/app_secret_provider.dart';
 import 'package:thingsboard_app/core/auth/oauth2/tb_oauth2_client.dart';
@@ -51,28 +52,28 @@ class TbLogger {
           printTime: false)),
       output: TbLogOutput());
 
-  void verbose(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.v(message, error, stackTrace);
+  void trace(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+    _logger.t(message, error: error, stackTrace: stackTrace);
   }
 
   void debug(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.d(message, error, stackTrace);
+    _logger.d(message, error: error, stackTrace: stackTrace);
   }
 
   void info(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.i(message, error, stackTrace);
+    _logger.i(message, error: error, stackTrace: stackTrace);
   }
 
   void warn(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.w(message, error, stackTrace);
+    _logger.w(message, error: error, stackTrace: stackTrace);
   }
 
   void error(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.e(message, error, stackTrace);
+    _logger.e(message, error: error, stackTrace: stackTrace);
   }
 
   void fatal(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.wtf(message, error, stackTrace);
+    _logger.f(message, error: error, stackTrace: stackTrace);
   }
 }
 
@@ -99,7 +100,7 @@ abstract class TbMainDashboardHolder {
   Future<bool> dashboardGoBack();
 }
 
-class TbContext {
+class TbContext implements PopEntry {
   static final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
   bool _initialized = false;
   bool isUserLoaded = false;
@@ -121,6 +122,9 @@ class TbContext {
 
   TbMainDashboardHolder? _mainDashboardHolder;
   bool _closeMainFirst = false;
+
+  final ValueNotifier<bool> canPopNotifier = ValueNotifier<bool>(false);
+  PopInvokedCallback get onPopInvoked => onPopInvokedImpl;
 
   GlobalKey<ScaffoldMessengerState> messengerKey =
       GlobalKey<ScaffoldMessengerState>();
@@ -195,6 +199,7 @@ class TbContext {
       }
     } catch (e, s) {
       log.error('Failed to init tbContext: $e', e, s);
+      await onFatalError(e);
     }
   }
 
@@ -210,6 +215,15 @@ class TbContext {
 
   void setMainDashboardHolder(TbMainDashboardHolder holder) {
     _mainDashboardHolder = holder;
+  }
+
+  Future<void> onFatalError(e) async {
+    var message = e is ThingsboardError
+        ? (e.message ?? 'Unknown error.')
+        : 'Unknown error.';
+    message = 'Fatal application error occured:\n' + message + '.';
+    await alert(title: 'Fatal error', message: message, ok: 'Close');
+    tbClient.logout();
   }
 
   void onError(ThingsboardError tbError) {
@@ -455,7 +469,7 @@ class TbContext {
     String userAgent = 'Mozilla/5.0';
     if (UniversalPlatform.isAndroid) {
       userAgent +=
-          ' (Linux; Android ${_androidInfo!.version.release}; ${_androidInfo!.model})';
+          ' (Linux; Android ${_androidInfo!.version.release}; ${_androidInfo.model})';
     } else if (UniversalPlatform.isIOS) {
       userAgent += ' (${_iosInfo!.model})';
     }
@@ -563,6 +577,22 @@ class TbContext {
     return true;
   }
 
+  void onPopInvokedImpl(bool didPop) async {
+    if (didPop) {
+      return;
+    }
+    if (await willPop()) {
+      if (await currentState!.willPop()) {
+        var navigator = Navigator.of(currentState!.context);
+        if (navigator.canPop()) {
+          navigator.pop();
+        } else {
+          SystemNavigator.pop();
+        }
+      }
+    }
+  }
+
   Future<bool> closeMainIfNeeded() async {
     if (currentState != null) {
       if (currentState!.closeMainFirst && _mainDashboardHolder != null) {
@@ -571,6 +601,19 @@ class TbContext {
       }
     }
     return false;
+  }
+
+  Future<void> alert(
+      {required String title, required String message, String ok = 'Ok'}) {
+    return showDialog<bool>(
+        context: currentState!.context,
+        builder: (context) => AlertDialog(
+              title: Text(title),
+              content: Text(message),
+              actions: [
+                TextButton(onPressed: () => pop(null, context), child: Text(ok))
+              ],
+            ));
   }
 
   Future<bool?> confirm(
@@ -601,13 +644,15 @@ mixin HasTbContext {
 
   void setupCurrentState(TbContextState currentState) {
     if (_tbContext.currentState != null) {
+      // ignore: deprecated_member_use
       ModalRoute.of(_tbContext.currentState!.context)
-          ?.removeScopedWillPopCallback(_tbContext.willPop);
+          ?.unregisterPopEntry(_tbContext);
     }
     _tbContext.currentState = currentState;
     if (_tbContext.currentState != null) {
+      // ignore: deprecated_member_use
       ModalRoute.of(_tbContext.currentState!.context)
-          ?.addScopedWillPopCallback(_tbContext.willPop);
+          ?.registerPopEntry(_tbContext);
     }
     if (_tbContext._closeMainFirst) {
       _tbContext._closeMainFirst = false;
