@@ -9,6 +9,7 @@
   "customers": "Customers",
   "assets": "Assets",
   "auditLogs": "Audit Logs",
+  "notifications": "Notifications",
   "logout": "Log Out",
   "login": "Log In",
 
@@ -25,6 +26,7 @@
   "passwordResetText": "Enter the email associated with your account and we'll send an email with password reset link",
   "requestPasswordReset": "Request password reset",
   "passwordResetLinkSuccessfullySentNotification": "Password reset link was successfully sent!",
+  "notificationsNotEnabled" : "Notifications are not configured. Please contact your system administrator.",
 
   "OR": "OR",
   "No": "No",

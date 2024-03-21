@@ -130,6 +130,24 @@ class S {
     );
   }
 
+  String get notifications {
+    return Intl.message(
+      'Notifications',
+      name: 'notifications',
+      desc: '',
+      args: [],
+    );
+  }
+
+  String get notificationsNotEnabled {
+    return Intl.message(
+      'Notifications are not configured. Please contact your system administrator.',
+      name: 'notificationsNotEnabled',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Log Out`
   String get logout {
     return Intl.message(

@@ -9,6 +9,7 @@
   "customers": "客户",
   "asserts": "资产",
   "auditLogs": "审计报告",
+  "notifications": "Notifications",
   "logout": "登出",
   "login": "登录",
 
@@ -25,6 +26,7 @@
   "passwordResetText": "输入和账号关联的Email，我们将发送一个密码重置链接到的Email",
   "requestPasswordReset": "要求重置密码",
   "passwordResetLinkSuccessfullySentNotification": "密码重置链接已发送",
+  "notificationsNotEnabled" : "Notifications are not configured. Please contact your system administrator.",
 
   "OR": "或",
   "No": "否",

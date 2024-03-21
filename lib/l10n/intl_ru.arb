@@ -9,6 +9,7 @@
   "customers": "Клиенты",
   "assets": "Объекты",
   "auditLogs": "Журнал изменений",
+  "notifications": "Уведомления",
   "logout": "Выйти",
   "login": "Войти",
 
@@ -25,6 +26,7 @@
   "passwordResetText": "Введите адрес Email, связанный с вашей учетной записью, и мы отправим письмо со ссылкой для сброса пароля",
   "requestPasswordReset": "Запросить сброс пароля",
   "passwordResetLinkSuccessfullySentNotification": "Ссылка для сброса пароля успешно отправлена!",
+  "notificationsNotEnabled" : "Уведомления не настроены. Пожалуйста, свяжитесь со службой поддержки",
 
   "or": "OR",
   "no": "No",

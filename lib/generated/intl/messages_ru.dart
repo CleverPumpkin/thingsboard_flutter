@@ -160,6 +160,10 @@ class MessageLookup extends MessageLookupByLibrary {
             MessageLookupByLibrary.simpleMessage("Новый пароль *"),
         "newUserText":
             MessageLookupByLibrary.simpleMessage("Новый пользователь?"),
+        "notifications":
+            MessageLookupByLibrary.simpleMessage("Уведомления"),
+        "notificationsNotEnabled":
+            MessageLookupByLibrary.simpleMessage("Уведомления не настроены. Пожалуйста, свяжитесь со службой поддержки"),
         "notImplemented":
             MessageLookupByLibrary.simpleMessage("Не реализована!"),
         "password": MessageLookupByLibrary.simpleMessage("Пароль"),
