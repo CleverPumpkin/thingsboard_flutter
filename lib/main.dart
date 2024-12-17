@@ -1,201 +1,92 @@
 import 'dart:developer';
 
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_gen/gen_l10n/messages.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:thingsboard_app/app_bloc_observer.dart';
 import 'package:thingsboard_app/config/routes/router.dart';
-import 'package:thingsboard_app/core/context/tb_context.dart';
+import 'package:thingsboard_app/config/themes/tb_theme.dart';
+import 'package:thingsboard_app/config/themes/wl_theme_widget.dart';
+import 'package:thingsboard_app/core/auth/login/region.dart';
 import 'package:thingsboard_app/firebase_options.dart';
-import 'package:thingsboard_app/modules/dashboard/main_dashboard_page.dart';
-import 'package:thingsboard_app/utils/services/notification_service.dart';
-import 'package:thingsboard_app/widgets/two_page_view.dart';
+import 'package:thingsboard_app/locator.dart';
+import 'package:thingsboard_app/utils/services/firebase/i_firebase_service.dart';
+import 'package:thingsboard_app/utils/services/local_database/i_local_database_service.dart';
+import 'package:uni_links/uni_links.dart';
 import 'package:universal_platform/universal_platform.dart';
-
-import 'config/themes/tb_theme.dart';
-import 'config/themes/wl_theme_widget.dart';
-import 'generated/l10n.dart';
-
-final appRouter = ThingsboardAppRouter();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-//  await FlutterDownloader.initialize();
-//  await Permission.storage.request();
+  await Hive.initFlutter();
+  Hive.registerAdapter(RegionAdapter());
 
+  await setUpRootDependencies();
   if (UniversalPlatform.isAndroid) {
-    await AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
+    await InAppWebViewController.setWebContentsDebuggingEnabled(true);
   }
 
   try {
-    await Firebase.initializeApp(
+    getIt<IFirebaseService>().initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-
-    FirebaseMessaging.onBackgroundMessage(backgroundHandler);
   } catch (e) {
-    log(e.toString());
+    log('main::FirebaseService.initializeApp() exception $e', error: e);
   }
 
-  runApp(ThingsboardApp());
+  try {
+    final uri = await getInitialUri();
+    if (uri != null) {
+      await getIt<ILocalDatabaseService>().setInitialAppLink(uri.toString());
+    }
+  } catch (e) {
+    log('main::getInitialUri() exception $e', error: e);
+  }
+
+  if (kDebugMode) {
+    Bloc.observer = AppBlocObserver(getIt());
+  }
+
+  runApp(const ThingsboardApp());
 }
 
-class ThingsboardApp extends StatefulWidget {
-  ThingsboardApp({Key? key}) : super(key: key);
-
-  @override
-  ThingsboardAppState createState() => ThingsboardAppState();
-}
-
-class ThingsboardAppState extends State<ThingsboardApp>
-    with TickerProviderStateMixin
-    implements TbMainDashboardHolder {
-  final TwoPageViewController _mainPageViewController = TwoPageViewController();
-  final MainDashboardPageController _mainDashboardPageController =
-      MainDashboardPageController();
-
-  final GlobalKey mainAppKey = GlobalKey();
-  final GlobalKey dashboardKey = GlobalKey();
-
-  @override
-  void initState() {
-    super.initState();
-    appRouter.tbContext.setMainDashboardHolder(this);
-  }
-
-  @override
-  Future<void> navigateToDashboard(String dashboardId,
-      {String? dashboardTitle,
-      String? state,
-      bool? hideToolbar,
-      bool animate = true}) async {
-    await _mainDashboardPageController.openDashboard(dashboardId,
-        dashboardTitle: dashboardTitle, state: state, hideToolbar: hideToolbar);
-    _openDashboard(animate: animate);
-  }
-
-  @override
-  Future<bool> dashboardGoBack() async {
-    if (_mainPageViewController.index == 1) {
-      var canGoBack = await _mainDashboardPageController.dashboardGoBack();
-      if (canGoBack) {
-        closeDashboard();
-      }
-      return false;
-    }
-    return true;
-  }
-
-  @override
-  Future<bool> openMain({bool animate = true}) async {
-    return _openMain(animate: animate);
-  }
-
-  @override
-  Future<bool> closeMain({bool animate = true}) async {
-    return _closeMain(animate: animate);
-  }
-
-  @override
-  Future<bool> openDashboard({bool animate = true}) async {
-    return _openDashboard(animate: animate);
-  }
-
-  @override
-  Future<bool> closeDashboard({bool animate = true}) {
-    return _closeDashboard(animate: animate);
-  }
-
-  bool isDashboardOpen() {
-    return _mainPageViewController.index == 1;
-  }
-
-  Future<bool> _openMain({bool animate = true}) async {
-    var res = await _mainPageViewController.open(0, animate: animate);
-    if (res) {
-      await _mainDashboardPageController.deactivateDashboard();
-    }
-    return res;
-  }
-
-  Future<bool> _closeMain({bool animate = true}) async {
-    if (!isDashboardOpen()) {
-      await _mainDashboardPageController.activateDashboard();
-    }
-    return _mainPageViewController.close(0, animate: animate);
-  }
-
-  Future<bool> _openDashboard({bool animate = true}) async {
-    if (!isDashboardOpen()) {
-      _mainDashboardPageController.activateDashboard();
-    }
-    return _mainPageViewController.open(1, animate: animate);
-  }
-
-  Future<bool> _closeDashboard({bool animate = true}) async {
-    var res = await _mainPageViewController.close(1, animate: animate);
-    if (res) {
-      _mainDashboardPageController.deactivateDashboard();
-    }
-    return res;
-  }
+class ThingsboardApp extends StatelessWidget {
+  const ThingsboardApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-        systemNavigationBarColor: Colors.white,
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
         statusBarColor: Colors.white,
-        systemNavigationBarIconBrightness: Brightness.light));
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
+
     return WlThemeWidget(
-      appRouter.tbContext,
+      getIt<ThingsboardAppRouter>().tbContext,
       wlThemedWidgetBuilder: (context, data, wlParams) => MaterialApp(
-          localizationsDelegates: [
-            S.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: S.delegate.supportedLocales,
-          title: wlParams.appTitle!,
-          themeMode: ThemeMode.light,
-          home: TwoPageView(
-              controller: _mainPageViewController,
-              first: MaterialApp(
-                key: mainAppKey,
-                scaffoldMessengerKey: appRouter.tbContext.messengerKey,
-                localizationsDelegates: [
-                  S.delegate,
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                ],
-                supportedLocales: S.delegate.supportedLocales,
-                title: wlParams.appTitle!,
-                theme: data,
-                themeMode: ThemeMode.light,
-                darkTheme: tbDarkTheme,
-                onGenerateRoute: appRouter.router.generator,
-                navigatorObservers: [appRouter.tbContext.routeObserver],
-              ),
-              second: MaterialApp(
-                key: dashboardKey,
-                // scaffoldMessengerKey: appRouter.tbContext.messengerKey,
-                localizationsDelegates: [
-                  S.delegate,
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                ],
-                supportedLocales: S.delegate.supportedLocales,
-                title: wlParams.appTitle!,
-                theme: data,
-                themeMode: ThemeMode.light,
-                darkTheme: tbDarkTheme,
-                home: MainDashboardPage(appRouter.tbContext,
-                    controller: _mainDashboardPageController),
-              ))),
+        scaffoldMessengerKey:
+            getIt<ThingsboardAppRouter>().tbContext.messengerKey,
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: S.supportedLocales,
+        title: wlParams.appTitle!,
+        themeMode: ThemeMode.light,
+        theme: data,
+        darkTheme: tbDarkTheme,
+        onGenerateRoute: getIt<ThingsboardAppRouter>().router.generator,
+        navigatorObservers: [
+          getIt<ThingsboardAppRouter>().tbContext.routeObserver,
+        ],
+      ),
     );
   }
 }

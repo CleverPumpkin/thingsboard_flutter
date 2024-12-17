@@ -28,9 +28,9 @@
   "passwordResetLinkSuccessfullySentNotification": "密码重置链接已发送",
   "notificationsNotEnabled" : "Notifications are not configured. Please contact your system administrator.",
 
-  "OR": "或",
-  "No": "否",
-  "Yes": "是",
+  "or": "或",
+  "no": "否",
+  "yes": "是",
 
   "title": "标题",
   "country": "国家",

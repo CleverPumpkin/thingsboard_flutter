@@ -1,113 +1,34 @@
 import 'dart:async';
 
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:fluro/fluro.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:logger/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:thingsboard_app/constants/app_constants.dart';
 import 'package:thingsboard_app/core/auth/oauth2/app_secret_provider.dart';
 import 'package:thingsboard_app/core/auth/oauth2/tb_oauth2_client.dart';
 import 'package:thingsboard_app/core/context/tb_context_widget.dart';
-import 'package:thingsboard_app/modules/main/main_page.dart';
+import 'package:thingsboard_app/core/logger/tb_logger.dart';
+import 'package:thingsboard_app/locator.dart';
+import 'package:thingsboard_app/modules/dashboard/domain/entites/dashboard_arguments.dart';
+import 'package:thingsboard_app/modules/main/main_navigation_item.dart';
+import 'package:thingsboard_app/thingsboard_client.dart';
+import 'package:thingsboard_app/utils/services/endpoint/i_endpoint_service.dart';
+import 'package:thingsboard_app/utils/services/firebase/i_firebase_service.dart';
+import 'package:thingsboard_app/utils/services/local_database/i_local_database_service.dart';
 import 'package:thingsboard_app/utils/services/notification_service.dart';
-import 'package:thingsboard_app/utils/services/tb_app_storage.dart';
 import 'package:thingsboard_app/utils/services/widget_action_handler.dart';
 import 'package:thingsboard_app/utils/services/wl_service.dart';
-import 'package:thingsboard_pe_client/thingsboard_client.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:universal_platform/universal_platform.dart';
 
 enum NotificationType { info, warn, success, error }
 
-class TbLogOutput extends LogOutput {
-  @override
-  void output(OutputEvent event) {
-    for (var line in event.lines) {
-      debugPrint(line);
-    }
-  }
-}
-
-class TbLogsFilter extends LogFilter {
-  @override
-  bool shouldLog(LogEvent event) {
-    if (kReleaseMode) {
-      return event.level.index >= Level.warning.index;
-    } else {
-      return true;
-    }
-  }
-}
-
-class TbLogger {
-  final _logger = Logger(
-      filter: TbLogsFilter(),
-      printer: PrefixPrinter(PrettyPrinter(
-          methodCount: 0,
-          errorMethodCount: 8,
-          lineLength: 200,
-          colors: false,
-          printEmojis: true,
-          printTime: false)),
-      output: TbLogOutput());
-
-  void trace(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.t(message, error: error, stackTrace: stackTrace);
-  }
-
-  void debug(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.d(message, error: error, stackTrace: stackTrace);
-  }
-
-  void info(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.i(message, error: error, stackTrace: stackTrace);
-  }
-
-  void warn(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.w(message, error: error, stackTrace: stackTrace);
-  }
-
-  void error(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.e(message, error: error, stackTrace: stackTrace);
-  }
-
-  void fatal(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.f(message, error: error, stackTrace: stackTrace);
-  }
-}
-
-typedef OpenDashboardCallback = void Function(String dashboardId,
-    {String? dashboardTitle, String? state, bool? hideToolbar});
-
-abstract class TbMainDashboardHolder {
-  Future<void> navigateToDashboard(String dashboardId,
-      {String? dashboardTitle,
-      String? state,
-      bool? hideToolbar,
-      bool animate = true});
-
-  Future<bool> openMain({bool animate});
-
-  Future<bool> closeMain({bool animate});
-
-  Future<bool> openDashboard({bool animate});
-
-  Future<bool> closeDashboard({bool animate});
-
-  bool isDashboardOpen();
-
-  Future<bool> dashboardGoBack();
-}
-
 class TbContext implements PopEntry {
   static final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
-  bool _initialized = false;
   bool isUserLoaded = false;
-  final ValueNotifier<bool> _isAuthenticated = ValueNotifier(false);
+  final _isAuthenticated = ValueNotifier<bool>(false);
   PlatformType? _oauth2PlatformType;
   List<OAuth2ClientInfo>? oauth2ClientInfos;
   SignUpSelfRegistrationParams? signUpParams;
@@ -117,28 +38,44 @@ class TbContext implements PopEntry {
   HomeDashboardInfo? homeDashboard;
   final _isLoadingNotifier = ValueNotifier<bool>(false);
   final _log = TbLogger();
-  late final _widgetActionHandler;
-  late final AndroidDeviceInfo? _androidInfo;
-  late final IosDeviceInfo? _iosInfo;
-  late final String packageName;
+  late final WidgetActionHandler _widgetActionHandler;
+  AndroidDeviceInfo? _androidInfo;
+  IosDeviceInfo? _iosInfo;
+  late String packageName;
   String? _initialNavigation;
+  StreamSubscription? _appLinkStreamSubscription;
 
-  TbMainDashboardHolder? _mainDashboardHolder;
   bool _closeMainFirst = false;
+  late bool _handleRootState;
 
+  @override
   final ValueNotifier<bool> canPopNotifier = ValueNotifier<bool>(false);
 
-  PopInvokedCallback get onPopInvoked => onPopInvokedImpl;
+  @override
+  void onPopInvoked(bool didPop) {
+    onPopInvokedImpl(didPop);
+  }
+
+  @override
+  void onPopInvokedWithResult(bool didPop, result) {
+    onPopInvokedImpl(didPop, result);
+  }
 
   GlobalKey<ScaffoldMessengerState> messengerKey =
       GlobalKey<ScaffoldMessengerState>();
-  late final TbStorage storage;
-  late final ThingsboardClient tbClient;
-  late final TbOAuth2Client oauth2Client;
+  late ThingsboardClient tbClient;
+  late TbOAuth2Client oauth2Client;
   late final WlService wlService;
 
   final FluroRouter router;
   final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
+  Listenable get isAuthenticatedListenable => _isAuthenticated;
+
+  bool get isAuthenticated => _isAuthenticated.value;
+
+  bool get hasOAuthClients =>
+      oauth2ClientInfos != null && oauth2ClientInfos!.isNotEmpty;
 
   TbContextState? currentState;
 
@@ -151,25 +88,29 @@ class TbContext implements PopEntry {
 
   WidgetActionHandler get widgetActionHandler => _widgetActionHandler;
 
+  final bottomNavigationTabChangedStream = StreamController<int>.broadcast();
+
   Future<void> init() async {
-    assert(() {
-      if (_initialized) {
-        throw StateError('TbContext already initialized!');
-      }
-      return true;
-    }());
-    _initialized = true;
-    storage = createAppStorage();
-    tbClient = ThingsboardClient(ThingsboardAppConstants.thingsBoardApiEndpoint,
-        storage: storage,
-        onUserLoaded: onUserLoaded,
-        onError: onError,
-        onLoadStarted: onLoadStarted,
-        onLoadFinished: onLoadFinished,
-        computeFunc: <Q, R>(callback, message) => compute(callback, message));
+    _handleRootState = true;
+
+    final endpoint = await getIt<IEndpointService>().getEndpoint();
+    log.debug('TbContext::init() endpoint: $endpoint');
+
+    tbClient = ThingsboardClient(
+      endpoint,
+      storage: getIt(),
+      onUserLoaded: onUserLoaded,
+      onError: onError,
+      onLoadStarted: onLoadStarted,
+      onLoadFinished: onLoadFinished,
+      computeFunc: <Q, R>(callback, message) => compute(callback, message),
+      debugMode: kDebugMode,
+    );
 
     oauth2Client = TbOAuth2Client(
-        tbContext: this, appSecretProvider: AppSecretProvider.local());
+      tbContext: this,
+      appSecretProvider: AppSecretProvider.local(),
+    );
 
     try {
       if (UniversalPlatform.isAndroid) {
@@ -195,12 +136,15 @@ class TbContext implements PopEntry {
       }
       await tbClient.init();
       if (UniversalPlatform.isAndroid || UniversalPlatform.isIOS) {
-        uriLinkStream.listen((Uri? uri) {
-          _updateInitialNavigation(uri);
-          handleInitialNavigation();
-        }, onError: (e) {
-          log.error('Failed to get new initial uri: $e', e);
-        });
+        uriLinkStream.listen(
+          (Uri? uri) {
+            _updateInitialNavigation(uri);
+            handleInitialNavigation();
+          },
+          onError: (e) {
+            log.error('Failed to get new initial uri: $e', e);
+          },
+        );
       }
     } catch (e, s) {
       log.error('Failed to init tbContext: $e', e, s);
@@ -218,15 +162,42 @@ class TbContext implements PopEntry {
     }
   }
 
-  void setMainDashboardHolder(TbMainDashboardHolder holder) {
-    _mainDashboardHolder = holder;
+  Future<void> reInit({
+    required String endpoint,
+    required VoidCallback onDone,
+    required ErrorCallback onAuthError,
+  }) async {
+    log.debug('TbContext:reinit()');
+
+    _handleRootState = false;
+
+    tbClient = ThingsboardClient(
+      endpoint,
+      storage: getIt(),
+      onUserLoaded: () => onUserLoaded(onDone: onDone),
+      onError: (error) {
+        onAuthError(error);
+        onError(error);
+      },
+      onLoadStarted: onLoadStarted,
+      onLoadFinished: onLoadFinished,
+      computeFunc: <Q, R>(callback, message) => compute(callback, message),
+      debugMode: kDebugMode,
+    );
+
+    oauth2Client = TbOAuth2Client(
+      tbContext: this,
+      appSecretProvider: AppSecretProvider.local(),
+    );
+
+    await tbClient.init();
   }
 
   Future<void> onFatalError(e) async {
     var message = e is ThingsboardError
         ? (e.message ?? 'Unknown error.')
         : 'Unknown error.';
-    message = 'Fatal application error occured:\n' + message + '.';
+    message = 'Fatal application error occured:\n$message.';
     await alert(title: 'Fatal error', message: message, ok: 'Close');
     logout();
   }
@@ -252,23 +223,26 @@ class TbContext implements PopEntry {
     showNotification(message, NotificationType.success, duration: duration);
   }
 
-  void showNotification(String message, NotificationType type,
-      {Duration? duration}) {
+  void showNotification(
+    String message,
+    NotificationType type, {
+    Duration? duration,
+  }) {
     duration ??= const Duration(days: 1);
     Color backgroundColor;
-    var textColor = Color(0xFFFFFFFF);
+    var textColor = const Color(0xFFFFFFFF);
     switch (type) {
       case NotificationType.info:
-        backgroundColor = Color(0xFF323232);
+        backgroundColor = const Color(0xFF323232);
         break;
       case NotificationType.warn:
-        backgroundColor = Color(0xFFdc6d1b);
+        backgroundColor = const Color(0xFFdc6d1b);
         break;
       case NotificationType.success:
-        backgroundColor = Color(0xFF008000);
+        backgroundColor = const Color(0xFF008000);
         break;
       case NotificationType.error:
-        backgroundColor = Color(0xFF800000);
+        backgroundColor = const Color(0xFF800000);
         break;
     }
     final snackBar = SnackBar(
@@ -296,18 +270,20 @@ class TbContext implements PopEntry {
   }
 
   void onLoadStarted() {
-    log.debug('On load started.');
+    log.debug('TbContext: On load started.');
     _isLoadingNotifier.value = true;
   }
 
-  void onLoadFinished() {
-    log.debug('On load finished.');
+  void onLoadFinished() async {
+    log.debug('TbContext: On load finished.');
     _isLoadingNotifier.value = false;
   }
 
-  Future<void> onUserLoaded() async {
+  Future<void> onUserLoaded({VoidCallback? onDone}) async {
     try {
-      log.debug('onUserLoaded: isAuthenticated=${tbClient.isAuthenticated()}');
+      log.debug(
+        'TbContext.onUserLoaded: isAuthenticated=${tbClient.isAuthenticated()}',
+      );
       isUserLoaded = true;
       if (tbClient.isAuthenticated() && !tbClient.isPreVerificationToken()) {
         log.debug('authUser: ${tbClient.getAuthUser()}');
@@ -336,50 +312,121 @@ class TbContext implements PopEntry {
         } else {
           twoFactorAuthProviders = null;
         }
+
         userDetails = null;
         userPermissions = null;
         homeDashboard = null;
         oauth2ClientInfos = await tbClient.getOAuth2Service().getOAuth2Clients(
-            pkgName: packageName, platform: _oauth2PlatformType);
+              pkgName: packageName,
+              platform: _oauth2PlatformType,
+              requestConfig: RequestConfig(followRedirect: false),
+            );
+
         signUpParams = await tbClient
             .getSelfRegistrationService()
             .getSignUpSelfRegistrationParams(pkgName: packageName);
       }
+
       _isAuthenticated.value =
           tbClient.isAuthenticated() && !tbClient.isPreVerificationToken();
       await wlService.updateWhiteLabeling();
       await updateRouteState();
-      if (tbClient.getAuthUser()!.userId != null) {
-        if (Firebase.apps.isNotEmpty) {
-          NotificationService().init(tbClient, log, this);
+
+      if (isAuthenticated) {
+        onDone?.call();
+      }
+
+      if (_handleRootState) {
+        await updateRouteState();
+      }
+
+      if (isAuthenticated) {
+        if (getIt<IFirebaseService>().apps.isNotEmpty) {
+          await NotificationService().init(tbClient, log, this);
         }
       }
     } catch (e, s) {
-      log.error('Error: $e', e, s);
+      log.error('TbContext.onUserLoaded: $e', e, s);
+
       if (_isConnectionError(e)) {
-        var res = await confirm(
-            title: 'Connection error',
-            message: 'Failed to connect to server',
-            cancel: 'Cancel',
-            ok: 'Retry');
+        final res = await confirm(
+          title: 'Connection error',
+          message: 'Failed to connect to server',
+          cancel: 'Cancel',
+          ok: 'Retry',
+        );
         if (res == true) {
           onUserLoaded();
         } else {
-          navigateTo('/login',
-              replace: true,
-              clearStack: true,
-              transition: TransitionType.fadeIn,
-              transitionDuration: Duration(milliseconds: 750));
+          navigateTo(
+            '/login',
+            replace: true,
+            clearStack: true,
+            transition: TransitionType.fadeIn,
+            transitionDuration: const Duration(milliseconds: 750),
+          );
         }
+      } else {
+        navigateTo(
+          '/login',
+          replace: true,
+          clearStack: true,
+          transition: TransitionType.fadeIn,
+          transitionDuration: const Duration(milliseconds: 750),
+        );
       }
+    } finally {
+      try {
+        final link = getIt<ILocalDatabaseService>().getInitialAppLink();
+        navigateByAppLink(link);
+      } catch (e) {
+        log.error('TbContext:getInitialUri() exception $e');
+      }
+
+      _appLinkStreamSubscription ??= linkStream.listen(
+        (link) {
+          navigateByAppLink(link);
+        },
+        onError: (err) {
+          log.error('linkStream.listen $err');
+        },
+      );
     }
   }
 
-  Future<void> logout({RequestConfig? requestConfig}) async {
-    if (Firebase.apps.isNotEmpty) {
+  Future<void> navigateByAppLink(String? link) async {
+    if (link != null) {
+      final uri = Uri.parse(link);
+      await getIt<ILocalDatabaseService>().deleteInitialAppLink();
+
+      log.debug('TbContext: navigate by appLink $uri');
+      navigateTo(
+        uri.path,
+        routeSettings: RouteSettings(
+          arguments: {...uri.queryParameters, 'uri': uri},
+        ),
+      );
+    }
+  }
+
+  Future<void> logout({
+    RequestConfig? requestConfig,
+    bool notifyUser = true,
+  }) async {
+    log.debug('TbContext::logout($requestConfig, $notifyUser)');
+    _handleRootState = true;
+
+    if (getIt<IFirebaseService>().apps.isNotEmpty) {
       await NotificationService().logout();
     }
-    tbClient.logout(requestConfig: requestConfig);
+
+    await tbClient.logout(
+      requestConfig: requestConfig,
+      notifyUser: notifyUser,
+    );
+
+    _appLinkStreamSubscription?.cancel();
+    _appLinkStreamSubscription = null;
   }
 
   bool _isConnectionError(e) {
@@ -387,13 +434,6 @@ class TbContext implements PopEntry {
         e.errorCode == ThingsBoardErrorCode.general &&
         e.message == 'Unable to connect';
   }
-
-  Listenable get isAuthenticatedListenable => _isAuthenticated;
-
-  bool get isAuthenticated => _isAuthenticated.value;
-
-  bool get hasOAuthClients =>
-      oauth2ClientInfos != null && oauth2ClientInfos!.isNotEmpty;
 
   bool get hasSelfRegistration =>
       signUpParams != null && signUpParams!.captchaSiteKey != null;
@@ -412,11 +452,13 @@ class TbContext implements PopEntry {
       if (tbClient.isAuthenticated()) {
         tbClient.logout();
       } else {
-        navigateTo(_initialNavigation!,
-            replace: true,
-            clearStack: true,
-            transition: TransitionType.fadeIn,
-            transitionDuration: Duration(milliseconds: 750));
+        navigateTo(
+          _initialNavigation!,
+          replace: true,
+          clearStack: true,
+          transition: TransitionType.fadeIn,
+          transitionDuration: const Duration(milliseconds: 750),
+        );
         _initialNavigation = null;
       }
       return true;
@@ -425,6 +467,9 @@ class TbContext implements PopEntry {
   }
 
   Future<void> updateRouteState() async {
+    log.debug(
+      'TbContext:updateRouteState() ${currentState != null && currentState!.mounted}',
+    );
     if (currentState != null) {
       if (!handleInitialNavigation()) {
         if (tbClient.isAuthenticated() && !tbClient.isPreVerificationToken()) {
@@ -432,27 +477,37 @@ class TbContext implements PopEntry {
           if (defaultDashboardId != null) {
             bool fullscreen = _userForceFullscreen();
             if (!fullscreen) {
-              await navigateToDashboard(defaultDashboardId, animate: false);
-              navigateTo('/home',
-                  replace: true,
-                  closeDashboard: false,
-                  transition: TransitionType.none);
+              navigateTo(
+                '/home',
+                replace: true,
+                closeDashboard: false,
+                transition: TransitionType.none,
+              );
+
+              navigateToDashboard(defaultDashboardId, animate: false);
             } else {
-              navigateTo('/fullscreenDashboard/$defaultDashboardId',
-                  replace: true, transition: TransitionType.fadeIn);
-            }
-          } else {
-            navigateTo('/home',
+              navigateTo(
+                '/fullscreenDashboard/$defaultDashboardId',
                 replace: true,
                 transition: TransitionType.fadeIn,
-                transitionDuration: Duration(milliseconds: 750));
+              );
+            }
+          } else {
+            navigateTo(
+              '/home',
+              replace: true,
+              transition: TransitionType.fadeIn,
+              transitionDuration: const Duration(milliseconds: 750),
+            );
           }
         } else {
-          navigateTo('/login',
-              replace: true,
-              clearStack: true,
-              transition: TransitionType.fadeIn,
-              transitionDuration: Duration(milliseconds: 750));
+          navigateTo(
+            '/login',
+            replace: true,
+            clearStack: true,
+            transition: TransitionType.fadeIn,
+            transitionDuration: const Duration(milliseconds: 750),
+          );
         }
       }
     }
@@ -486,7 +541,7 @@ class TbContext implements PopEntry {
     String userAgent = 'Mozilla/5.0';
     if (UniversalPlatform.isAndroid) {
       userAgent +=
-          ' (Linux; Android ${_androidInfo!.version.release}; ${_androidInfo.model})';
+          ' (Linux; Android ${_androidInfo!.version.release}; ${_androidInfo?.model})';
     } else if (UniversalPlatform.isIOS) {
       userAgent += ' (${_iosInfo!.model})';
     }
@@ -505,20 +560,19 @@ class TbContext implements PopEntry {
     return false;
   }
 
-  Future<dynamic> navigateTo(String path,
-      {bool replace = false,
-      bool clearStack = false,
-      closeDashboard = true,
-      TransitionType? transition,
-      Duration? transitionDuration,
-      bool restoreDashboard = true}) async {
+  Future<dynamic> navigateTo(
+    String path, {
+    bool replace = false,
+    bool clearStack = false,
+    closeDashboard = true,
+    TransitionType? transition,
+    Duration? transitionDuration,
+    bool restoreDashboard = true,
+    RouteSettings? routeSettings,
+  }) async {
     if (currentState != null) {
       hideNotification();
-      bool isOpenedDashboard =
-          _mainDashboardHolder?.isDashboardOpen() == true && closeDashboard;
-      if (isOpenedDashboard) {
-        _mainDashboardHolder?.openMain();
-      }
+
       if (currentState is TbMainState) {
         var mainState = currentState as TbMainState;
         if (mainState.canNavigate(path) && !replace) {
@@ -530,7 +584,7 @@ class TbContext implements PopEntry {
         replace = true;
         clearStack = true;
       }
-      if (transition != TransitionType.nativeModal && isOpenedDashboard) {
+      if (transition != TransitionType.nativeModal) {
         transition = TransitionType.none;
       } else if (transition == null) {
         if (replace) {
@@ -539,30 +593,44 @@ class TbContext implements PopEntry {
           transition = TransitionType.native;
         }
       }
-      _closeMainFirst = isOpenedDashboard;
-      return await router.navigateTo(currentState!.context, path,
-          transition: transition,
-          transitionDuration: transitionDuration,
-          replace: replace,
-          clearStack: clearStack);
+
+      return await router.navigateTo(
+        currentState!.context,
+        path,
+        transition: transition,
+        transitionDuration: transitionDuration,
+        replace: replace,
+        clearStack: clearStack,
+        routeSettings: routeSettings,
+      );
     }
   }
 
-  Future<void> navigateToDashboard(String dashboardId,
-      {String? dashboardTitle,
-      String? state,
-      bool? hideToolbar,
-      bool animate = true}) async {
-    await _mainDashboardHolder?.navigateToDashboard(dashboardId,
-        dashboardTitle: dashboardTitle,
-        state: state,
-        hideToolbar: hideToolbar,
-        animate: animate);
+  Future<void> navigateToDashboard(
+    String dashboardId, {
+    String? dashboardTitle,
+    String? state,
+    bool? hideToolbar,
+    bool animate = true,
+  }) async {
+    router.navigateTo(
+      currentState!.context,
+      '/dashboard',
+      routeSettings: RouteSettings(
+        arguments: DashboardArgumentsEntity(
+          dashboardId,
+          title: dashboardTitle,
+          state: state,
+          hideToolbar: hideToolbar,
+          animate: animate,
+        ),
+      ),
+    );
   }
 
   Future<T?> showFullScreenDialog<T>(Widget dialog) {
     return Navigator.of(currentState!.context).push<T>(
-      new MaterialPageRoute<T>(
+      MaterialPageRoute<T>(
         builder: (BuildContext context) {
           return dialog;
         },
@@ -572,7 +640,6 @@ class TbContext implements PopEntry {
   }
 
   void pop<T>([T? result, BuildContext? context]) async {
-    await closeMainIfNeeded();
     var targetContext = context ?? currentState?.context;
     if (targetContext != null) {
       router.pop<T>(targetContext, result);
@@ -587,71 +654,58 @@ class TbContext implements PopEntry {
     }
   }
 
-  Future<bool> willPop() async {
-    if (await closeMainIfNeeded()) {
-      return true;
-    }
-    if (_mainDashboardHolder != null) {
-      return await _mainDashboardHolder!.dashboardGoBack();
-    }
-    return true;
-  }
-
-  void onPopInvokedImpl(bool didPop) async {
+  void onPopInvokedImpl<T>(bool didPop, [T? result]) async {
     if (didPop) {
       return;
     }
-    if (await willPop()) {
-      if (await currentState!.willPop()) {
-        var navigator = Navigator.of(currentState!.context);
-        if (navigator.canPop()) {
-          navigator.pop();
-        } else {
-          SystemNavigator.pop();
-        }
+
+    if (await currentState!.willPop()) {
+      var navigator = Navigator.of(currentState!.context);
+      if (navigator.canPop()) {
+        navigator.pop(result);
+      } else {
+        SystemNavigator.pop();
       }
     }
   }
 
-  Future<bool> closeMainIfNeeded() async {
-    if (currentState != null) {
-      if (currentState!.closeMainFirst && _mainDashboardHolder != null) {
-        await _mainDashboardHolder!.closeMain();
-        return true;
-      }
-    }
-    return false;
+  Future<void> alert({
+    required String title,
+    required String message,
+    String ok = 'Ok',
+  }) {
+    return showDialog<bool>(
+      context: currentState!.context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => pop(null, context), child: Text(ok)),
+        ],
+      ),
+    );
   }
 
-  Future<void> alert(
-      {required String title, required String message, String ok = 'Ok'}) {
+  Future<bool?> confirm({
+    required String title,
+    required String message,
+    String cancel = 'Cancel',
+    String ok = 'Ok',
+  }) {
     return showDialog<bool>(
-        context: currentState!.context,
-        builder: (context) => AlertDialog(
-              title: Text(title),
-              content: Text(message),
-              actions: [
-                TextButton(onPressed: () => pop(null, context), child: Text(ok))
-              ],
-            ));
-  }
-
-  Future<bool?> confirm(
-      {required String title,
-      required String message,
-      String cancel = 'Cancel',
-      String ok = 'Ok'}) {
-    return showDialog<bool>(
-        context: currentState!.context,
-        builder: (context) => AlertDialog(
-              title: Text(title),
-              content: Text(message),
-              actions: [
-                TextButton(
-                    onPressed: () => pop(false, context), child: Text(cancel)),
-                TextButton(onPressed: () => pop(true, context), child: Text(ok))
-              ],
-            ));
+      context: currentState!.context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => pop(false, context),
+            child: Text(cancel),
+          ),
+          TextButton(onPressed: () => pop(true, context), child: Text(ok)),
+        ],
+      ),
+    );
   }
 }
 
@@ -705,8 +759,11 @@ mixin HasTbContext {
     await _tbContext.init();
   }
 
-  Future<dynamic> navigateTo(String path,
-          {bool replace = false, bool clearStack = false}) =>
+  Future<dynamic> navigateTo(
+    String path, {
+    bool replace = false,
+    bool clearStack = false,
+  }) =>
       _tbContext.navigateTo(path, replace: replace, clearStack: clearStack);
 
   void pop<T>([T? result, BuildContext? context]) =>
@@ -715,24 +772,33 @@ mixin HasTbContext {
   Future<bool> maybePop<T extends Object?>([T? result]) =>
       _tbContext.maybePop<T>(result);
 
-  Future<void> navigateToDashboard(String dashboardId,
-          {String? dashboardTitle,
-          String? state,
-          bool? hideToolbar,
-          bool animate = true}) =>
-      _tbContext.navigateToDashboard(dashboardId,
-          dashboardTitle: dashboardTitle,
-          state: state,
-          hideToolbar: hideToolbar,
-          animate: animate);
+  Future<void> navigateToDashboard(
+    String dashboardId, {
+    String? dashboardTitle,
+    String? state,
+    bool? hideToolbar,
+    bool animate = true,
+  }) =>
+      _tbContext.navigateToDashboard(
+        dashboardId,
+        dashboardTitle: dashboardTitle,
+        state: state,
+        hideToolbar: hideToolbar,
+        animate: animate,
+      );
 
-  Future<bool?> confirm(
-          {required String title,
-          required String message,
-          String cancel = 'Cancel',
-          String ok = 'Ok'}) =>
+  Future<bool?> confirm({
+    required String title,
+    required String message,
+    String cancel = 'Cancel',
+    String ok = 'Ok',
+  }) =>
       _tbContext.confirm(
-          title: title, message: message, cancel: cancel, ok: ok);
+        title: title,
+        message: message,
+        cancel: cancel,
+        ok: ok,
+      );
 
   void hideNotification() => _tbContext.hideNotification();
 
