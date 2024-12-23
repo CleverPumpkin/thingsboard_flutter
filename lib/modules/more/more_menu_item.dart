@@ -66,14 +66,13 @@ class MoreMenuItem {
               path: '/auditLogs',
             ),
             MoreMenuItem(
-              title: 'Notifications',
+              title: S.of(context).notifications,
               icon: Icons.notifications_active,
               path: '/notifications',
               showAdditionalIcon: true,
               additionalIcon: _notificationNumberWidget(tbContext.tbClient),
               disabled: getIt<IFirebaseService>().apps.isEmpty,
-              disabledReasonMessage: 'Notifications are not configured. '
-                  'Please contact your system administrator.',
+              disabledReasonMessage: S.of(context).notificationsNotEnabled,
             ),
           ]);
           break;
@@ -85,14 +84,13 @@ class MoreMenuItem {
               path: '/assets',
             ),
             MoreMenuItem(
-              title: 'Notifications',
+              title: S.of(context).notifications,
               icon: Icons.notifications_active,
               path: '/notifications',
               showAdditionalIcon: true,
               additionalIcon: _notificationNumberWidget(tbContext.tbClient),
               disabled: getIt<IFirebaseService>().apps.isEmpty,
-              disabledReasonMessage: 'Notifications are not configured. '
-                  'Please contact your system administrator.',
+              disabledReasonMessage: S.of(context).notificationsNotEnabled,
             ),
           ]);
           break;

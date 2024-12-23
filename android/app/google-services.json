@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "486105040504",
+    "project_id": "korvet-8cf44",
+    "storage_bucket": "korvet-8cf44.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:486105040504:android:308017f9ecc538a5ed0f8d",
+        "android_client_info": {
+          "package_name": "ru.korvet.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4dxOvrs0n3yENnMmZfcmKjteXoGcTbok"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

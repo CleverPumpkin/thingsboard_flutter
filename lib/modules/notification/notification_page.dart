@@ -50,10 +50,10 @@ class _NotificationPageState extends TbPageState<NotificationPage> {
             Platform.isIOS ? Icons.arrow_back_ios : Icons.arrow_back,
           ),
         ),
-        title: const Text('Notifications'),
+        title: const Text('Уведомления'),
         actions: [
           TextButton(
-            child: const Text('Mark all as read'),
+            child: const Text('Пометить прочитанными'),
             onPressed: () async {
               await notificationRepository.markAllAsRead();
 
@@ -100,11 +100,11 @@ class _NotificationPageState extends TbPageState<NotificationPage> {
                       },
                       segments: const [
                         FilterSegments(
-                          label: 'Unread',
+                          label: 'Непрочитанные',
                           value: NotificationsFilter.unread,
                         ),
                         FilterSegments(
-                          label: 'All',
+                          label: 'Все',
                           value: NotificationsFilter.all,
                         ),
                       ],
