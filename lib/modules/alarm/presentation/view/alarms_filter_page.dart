@@ -6,6 +6,7 @@ import 'package:preload_page_view/preload_page_view.dart';
 import 'package:thingsboard_app/core/context/tb_context.dart';
 import 'package:thingsboard_app/core/context/tb_context_widget.dart';
 import 'package:thingsboard_app/locator.dart';
+import 'package:flutter_gen/gen_l10n/messages.dart';
 import 'package:thingsboard_app/modules/alarm/domain/entities/filter_data_entity.dart';
 import 'package:thingsboard_app/modules/alarm/presentation/bloc/alarm_types/alarm_types_bloc.dart';
 import 'package:thingsboard_app/modules/alarm/presentation/bloc/alarm_types/alarm_types_event.dart';
@@ -53,7 +54,7 @@ class _AlarmsFilterPageState extends TbContextState<AlarmsFilterPage> {
       child: Scaffold(
         appBar: TbAppBar(
           tbContext,
-          title: const Text('Filters'),
+          title: Text(S.of(context).filters),
           leading: BackButton(
             onPressed: () {
               _onBackButtonClick();
@@ -79,7 +80,7 @@ class _AlarmsFilterPageState extends TbContextState<AlarmsFilterPage> {
                           key: ValueKey(
                             filtersService.getSelectedFilter(Filters.status),
                           ),
-                          label: 'Alarm status list',
+                          label: S.of(context).alarmStatusList,
                           items: filtersService.statuses,
                           selected:
                               filtersService.getSelectedFilter(Filters.status),
@@ -103,7 +104,7 @@ class _AlarmsFilterPageState extends TbContextState<AlarmsFilterPage> {
                               filtersService
                                   .getSelectedFilter(Filters.severity),
                             ),
-                            label: 'Alarm severity list',
+                            label: S.of(context).alarmSeverityList,
                             items: filtersService.severities,
                             selected: filtersService
                                 .getSelectedFilter(Filters.severity),

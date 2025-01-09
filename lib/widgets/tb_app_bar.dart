@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/messages.dart';
 import 'package:stream_transform/stream_transform.dart';
 import 'package:thingsboard_app/core/context/tb_context.dart';
 import 'package:thingsboard_app/core/context/tb_context_widget.dart';
@@ -158,7 +159,7 @@ class _TbAppSearchBarState extends TbContextState<TbAppSearchBar> {
           ),
           contentPadding:
               const EdgeInsets.only(left: 15, bottom: 11, top: 15, right: 15),
-          hintText: widget.searchHint ?? 'Search',
+          hintText: widget.searchHint ?? S.of(context).search,
         ),
       ),
       leading: widget.leading,

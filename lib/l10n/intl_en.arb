@@ -4,6 +4,7 @@
   "alarms": "Alarms",
   "devices": "Devices",
   "more": "More",
+  "filters" : "Filter",
   "customers": "Customers",
   "assets": "Assets",
   "auditLogs": "Audit Logs",
@@ -28,6 +29,8 @@
   "or": "OR",
   "no": "No",
   "yes": "Yes",
+  "all" : "All",
+  "reset" : "Reset",
 
   "title": "Title",
   "country": "Country",
@@ -37,6 +40,7 @@
   "address": "Address",
   "address2": "Address 2",
   "phone": "Phone",
+  "email" : "email",
   "alarmClearTitle": "Clear Alarm",
   "alarmClearText": "Are you sure you want to clear Alarm?",
   "alarmAcknowledgeTitle": "Acknowledge Alarm",
@@ -111,6 +115,7 @@
   "privacyPolicy": "Privacy Policy",
   "cancel": "Cancel",
   "accept": "Accept",
+  "update": "Update",
   "termsOfUse": "Terms of Use",
   "firstNameStar": "First name *",
   "firstNameRequireText": "First name is required.",
@@ -166,5 +171,16 @@
   "northAmerica": "North America",
   "europe": "Europe",
   "northAmericaRegionShort": "N. Virginia",
-  "europeRegionShort": "Frankfurt"
+  "europeRegionShort": "Frankfurt",
+
+  "alarmTypeList" : "Alarm type list",
+  "alarmSeverityList" : "Alarm severity list",
+  "alarmStatusList" : "Alarm status list",
+  "search" : "Search",
+  "searchResults" : "Search results",
+  "searchUser" : "Search user",
+  "searchUsers" : "Search users",
+  "noNotificationsFound" : "No notifications found",
+  "anyType" : "Any type",
+  "close" : "Close"
 }

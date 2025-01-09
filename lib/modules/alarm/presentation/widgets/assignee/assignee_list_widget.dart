@@ -83,7 +83,7 @@ class AssigneeListWidget extends StatelessWidget {
                             fontWeight: FontWeight.w400,
                             fontSize: 14,
                           ),
-                          hintText: 'Search users',
+                          hintText: S.of(context).searchUsers,
                           contentPadding:
                               const EdgeInsets.fromLTRB(16, 12, 16, 12),
                           isDense: true,
@@ -137,7 +137,7 @@ class AssigneeListWidget extends StatelessWidget {
                                     color: Colors.black.withOpacity(0.38),
                                     size: 32,
                                   ),
-                                  name: 'Assigned to me',
+                                  name: S.of(context).assignedToMe,
                                   onUserTap: (id) {
                                     Navigator.of(context).pop();
                                     getIt<AssigneeBloc>().add(
