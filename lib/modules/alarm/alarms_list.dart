@@ -45,7 +45,7 @@ class AlarmsList extends StatelessWidget {
               const NewPageProgressBuilder(),
           noItemsFoundIndicatorBuilder: (context) =>
               FirstPageExceptionIndicator(
-            title: 'События не найдены',
+            title: S.of(context).noNotificationsFound,
             message: S.of(context).listIsEmptyText,
             onTryAgain: () => getIt<AlarmBloc>().add(
               const AlarmsRefreshPageEvent(),

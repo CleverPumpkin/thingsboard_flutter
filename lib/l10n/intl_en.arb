@@ -8,7 +8,7 @@
   "customers": "Customers",
   "assets": "Assets",
   "auditLogs": "Audit Logs",
-  "notifications": "Уведомления",
+  "notifications": "Notifications",
   "logout": "Log Out",
   "login": "Log In",
   "logoDefaultValue": "ThingsBoard Logo",
@@ -24,6 +24,7 @@
   "passwordResetText": "Enter the email associated with your account and we'll send an email with password reset link",
   "requestPasswordReset": "Request password reset",
   "passwordResetLinkSuccessfullySentNotification": "Password reset link was successfully sent!",
+  "emailVersificationSuccessfullySentNotification": "Email verification link was successfully sent!",
   "notificationsNotEnabled" : "Notifications are not configured. Please contact your system administrator.",
 
   "or": "OR",
@@ -172,6 +173,12 @@
   "europe": "Europe",
   "northAmericaRegionShort": "N. Virginia",
   "europeRegionShort": "Frankfurt",
+  "notifications": "Notifications",
+  "deviceList": "Device list",
+  "dashboards": "Dashboards",
+  "isRequiredText": "is required.",
+  "updateRequired": "Update required",
+  "updateTo": "Update to {version}",
 
   "alarmTypeList" : "Alarm type list",
   "alarmSeverityList" : "Alarm severity list",
@@ -182,5 +189,9 @@
   "searchUsers" : "Search users",
   "noNotificationsFound" : "No notifications found",
   "anyType" : "Any type",
-  "close" : "Close"
+  "close" : "Close",
+
+  "markAsRead" : "Mark as read",
+  "unread" : "unread"
+
 }
