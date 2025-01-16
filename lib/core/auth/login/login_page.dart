@@ -198,7 +198,7 @@ class _LoginPageState extends TbPageState<LoginPage>
                                             ),
                                             child: Center(
                                               child: Text(
-                                                'Login with',
+                                                S.of(context).loginWith,
                                                 style: TbTextStyles.bodyMedium
                                                     .copyWith(
                                                   color: Colors.black
@@ -248,8 +248,8 @@ class _LoginPageState extends TbPageState<LoginPage>
                                                       height: 24,
                                                     ),
                                                     const SizedBox(width: 8),
-                                                    const Text(
-                                                      'Scan QR code',
+                                                    Text(
+                                                      S.of(context).qrCode,
                                                       style: TextStyle(
                                                         color: Colors.black,
                                                         fontWeight:

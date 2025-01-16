@@ -192,6 +192,8 @@
   "close" : "Close",
 
   "markAsRead" : "Mark as read",
-  "unread" : "unread"
+  "unread" : "unread",
+  "qrCode": "Scan QR code",
+  "loginWith" : "Login with"
 
 }

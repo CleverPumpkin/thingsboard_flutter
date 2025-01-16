@@ -63,7 +63,7 @@ class _TbAppBarState extends TbContextState<TbAppBar> {
   AppBar buildDefaultBar() {
     return AppBar(
       leading: widget.canGoBack || Navigator.of(context).canPop()
-          ? widget.leading
+          ? null //widget.leading //disables backbutton bug on root screen.
           : null,
       title: widget.title,
       actions: widget.actions,
