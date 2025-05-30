@@ -7,8 +7,8 @@ import 'package:thingsboard_app/utils/services/local_database/i_local_database_s
 class EndpointService implements IEndpointService {
   EndpointService({required this.databaseService});
 
-  static const northAmericaHost = 'https://thingsboard.cloud';
-  static const europeHost = 'https://eu.thingsboard.cloud';
+  static const northAmericaHost = 'https://lk.detectorsiren.ru';
+  static const europeHost = 'https://lk.detectorsiren.ru';
 
   final ILocalDatabaseService databaseService;
   String? _cachedEndpoint;
@@ -38,7 +38,7 @@ class EndpointService implements IEndpointService {
 
   @override
   Future<String> getEndpoint() async {
-    _cachedEndpoint ??= databaseService.getSelectedEndpoint();
+    _cachedEndpoint ??= await databaseService.getSelectedEndpoint();
 
     return _cachedEndpoint ?? ThingsboardAppConstants.thingsBoardApiEndpoint;
   }
@@ -55,7 +55,7 @@ class EndpointService implements IEndpointService {
   }
 
   @override
-  Region? getSelectedRegion() {
+  Future<Region?> getSelectedRegion() async {
     return databaseService.getSelectedRegion();
   }
 

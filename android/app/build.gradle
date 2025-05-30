@@ -35,7 +35,7 @@ android {
 
     defaultConfig {
         applicationId "ru.korvet.app"
-        minSdkVersion 21
+        minSdkVersion 26
         targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -53,6 +53,7 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 
@@ -76,7 +77,3 @@ android {
 flutter {
     source '../..'
 }
-
-/*dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-}*/
