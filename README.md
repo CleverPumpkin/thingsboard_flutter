@@ -8,3 +8,9 @@ Build your own advanced IoT mobile application **with minimum coding efforts**
 - [Getting started](https://thingsboard.io/docs/pe/mobile/getting-started/) - learn how to set up and run your first IoT mobile app
 - [Customize your app](https://thingsboard.io/docs/pe/mobile/customization/) - learn how to customize the app
 - [Publish your app](https://thingsboard.io/docs/pe/mobile/release/) - learn how to publish app to Google Play or App Store
+
+
+
+## Всякое
+
+Чтобы собрать версию после обновления до 1.6.0 пришлось править ручками зависимости в .pub-cache. Потребовалось добавить namespace  чтобы AGP не ругался

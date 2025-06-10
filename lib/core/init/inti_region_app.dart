@@ -28,9 +28,10 @@ class _ThingsboardInitAppState extends TbPageState<ThingsboardInitRegionApp> {
           );
         }
 
-        if (snapshot.hasError || snapshot.data == null) {
+        // Disable region selection
+        /*if (snapshot.hasError || snapshot.data == null) {
           return SelectRegionScreen(tbContext);
-        }
+        }*/
 
         initTbContext();
 
