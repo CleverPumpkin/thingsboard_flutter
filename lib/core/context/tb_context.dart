@@ -205,9 +205,9 @@ class TbContext implements PopEntry {
     var message = e is ThingsboardError
         ? (e.message ?? 'Unknown error.')
         : 'Unknown error.';
-    message = 'Fatal application error occured:\n$message.';
-    await alert(title: 'Fatal error', message: message, ok: 'Close');
-    logout();
+    message = 'Критическая ошибка:\n$message.';
+    await alert(title: 'Ошибка', message: message, ok: 'Закрыть');
+    //logout();
   }
 
   void onError(ThingsboardError tbError) {
@@ -401,14 +401,14 @@ class TbContext implements PopEntry {
 
       if (_isConnectionError(e)) {
         final res = await confirm(
-          title: 'Connection error',
-          message: 'Failed to connect to server',
-          cancel: 'Cancel',
-          ok: 'Retry',
+          title: 'Ошибка подключения',
+          message: 'Не удалось подключиться к серверу',
+          cancel: 'Отмена',
+          ok: 'Повторить',
         );
         if (res == true) {
           onUserLoaded();
-        } else {
+        } /*else { // Disabled to prevent logout on network error
           navigateTo(
             '/login',
             replace: true,
@@ -416,15 +416,16 @@ class TbContext implements PopEntry {
             transition: TransitionType.fadeIn,
             transitionDuration: const Duration(milliseconds: 750),
           );
-        }
+        }*/
       } else {
-        navigateTo(
+        // Disabled to prevent logout on network error
+        /*navigateTo(
           '/login',
           replace: true,
           clearStack: true,
           transition: TransitionType.fadeIn,
           transitionDuration: const Duration(milliseconds: 750),
-        );
+        );*/
       }
     } finally {
       try {

@@ -138,7 +138,7 @@ class DeviceProvisioningBloc
           } else {
             emit(
               const DeviceProvisioningClaimingErrorState(
-                'Something went wrong. Please try again.',
+                'Что-то пошло не так. Пожалуйста, повторите попытку',
               ),
             );
           }
